@@ -97,6 +97,7 @@ for uploaded_file in uploaded_files:
     temp_df["성별"] = temp_df["성별"].astype(str).str.strip()
     temp_df = temp_df[temp_df["학년"] == 3].copy()
     temp_df["총합"] = temp_df["수학성적"] + temp_df["국어성적"]
+    temp_df["3학년 학급"] = temp_df["반"].astype("Int64").astype(str) + "반"
 
     frames.append(temp_df)
     file_summaries.append({"파일명": uploaded_file.name, "학생수": len(temp_df)})
@@ -140,12 +141,13 @@ st.dataframe(class_df, use_container_width=True, hide_index=True)
 
 
 # ──────────────────────────────────────────────────────────────
-# 기능 3. 반별 성별 분리 + 총합순 정렬 + 순환 4학년 반 배정
+# 기능 3. 분반 준비
 # ──────────────────────────────────────────────────────────────
-st.subheader("③ 분반 결과")
+st.subheader("③ 분반 준비")
 
 st.markdown("#### 3학년 반별 시작 번호 설정")
 class_start_map = {}
+assignment_frames = []
 
 for class_no in all_class_options:
     col_left, col_right = st.columns(2)
@@ -175,7 +177,7 @@ for class_num in sorted(df["반"].dropna().unique()):
         .sort_values(["총합", "수학성적", "국어성적", "번호"], ascending=[False, False, False, True])
         .reset_index(drop=True)
     )
-    boys_df = boys_df[["번호", "이름", "성별", "수학성적", "국어성적", "총합"]].copy()
+    boys_df = boys_df[["번호", "이름", "성별", "수학성적", "국어성적", "총합", "3학년 학급"]].copy()
     boys_df["4학년 반"] = [
         rotating_class_label(int(class_num), boys_offset, idx)
         for idx in range(len(boys_df))
@@ -186,7 +188,7 @@ for class_num in sorted(df["반"].dropna().unique()):
         .sort_values(["총합", "수학성적", "국어성적", "번호"], ascending=[False, False, False, True])
         .reset_index(drop=True)
     )
-    girls_df = girls_df[["번호", "이름", "성별", "수학성적", "국어성적", "총합"]].copy()
+    girls_df = girls_df[["번호", "이름", "성별", "수학성적", "국어성적", "총합", "3학년 학급"]].copy()
     girls_df["4학년 반"] = [
         rotating_class_label(int(class_num), girls_offset, idx)
         for idx in range(len(girls_df))
@@ -196,11 +198,11 @@ for class_num in sorted(df["반"].dropna().unique()):
 
     with col_left:
         st.write("**남학생 분반 순서**")
-        st.data_editor(
+        edited_boys_df = st.data_editor(
             boys_df,
             use_container_width=True,
             hide_index=True,
-            disabled=["번호", "이름", "성별", "수학성적", "국어성적", "총합"],
+            disabled=["번호", "이름", "성별", "수학성적", "국어성적", "총합", "3학년 학급"],
             column_config={
                 "4학년 반": st.column_config.SelectboxColumn(
                     "4학년 반",
@@ -210,14 +212,15 @@ for class_num in sorted(df["반"].dropna().unique()):
             },
             key=f"boys_editor_{int(class_num)}",
         )
+        assignment_frames.append(edited_boys_df)
 
     with col_right:
         st.write("**여학생 분반 순서**")
-        st.data_editor(
+        edited_girls_df = st.data_editor(
             girls_df,
             use_container_width=True,
             hide_index=True,
-            disabled=["번호", "이름", "성별", "수학성적", "국어성적", "총합"],
+            disabled=["번호", "이름", "성별", "수학성적", "국어성적", "총합", "3학년 학급"],
             column_config={
                 "4학년 반": st.column_config.SelectboxColumn(
                     "4학년 반",
@@ -227,3 +230,21 @@ for class_num in sorted(df["반"].dropna().unique()):
             },
             key=f"girls_editor_{int(class_num)}",
         )
+        assignment_frames.append(edited_girls_df)
+
+
+# ──────────────────────────────────────────────────────────────
+# 기능 4. 분반 결과
+# ──────────────────────────────────────────────────────────────
+st.subheader("④ 분반 결과")
+
+if assignment_frames:
+    result_df = pd.concat(assignment_frames, ignore_index=True)
+    result_df["4학년 반 번호"] = result_df["4학년 반"].str.extract(r"(\d+)").astype(int)
+
+    for grade4_class in range(1, 11):
+        st.markdown(f"### 4학년 {grade4_class}반")
+        grade4_df = result_df[result_df["4학년 반 번호"] == grade4_class].copy()
+        grade4_df = grade4_df.sort_values("이름").reset_index(drop=True)
+        grade4_df = grade4_df[["번호", "이름", "성별", "3학년 학급"]]
+        st.dataframe(grade4_df, use_container_width=True, hide_index=True)
