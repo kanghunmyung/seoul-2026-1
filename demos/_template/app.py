@@ -45,6 +45,14 @@ def rotating_class_label(base_class: int, selected_offset: int, row_index: int) 
     return f"{target_class}반"
 
 
+
+def highlight_duplicate_names(group_df: pd.DataFrame):
+    duplicate_mask = group_df["이름"].duplicated(keep=False)
+    styles = pd.DataFrame("", index=group_df.index, columns=group_df.columns)
+    styles.loc[duplicate_mask, :] = "background-color: yellow"
+    return styles
+
+
 required_columns = ["학년", "반", "번호", "이름", "성별", "수학성적", "국어성적"]
 assign_options = list(range(1, 11))
 all_class_options = list(range(1, 11))
@@ -247,4 +255,8 @@ if assignment_frames:
         grade4_df = result_df[result_df["4학년 반 번호"] == grade4_class].copy()
         grade4_df = grade4_df.sort_values("이름").reset_index(drop=True)
         grade4_df = grade4_df[["번호", "이름", "성별", "3학년 학급"]]
-        st.dataframe(grade4_df, use_container_width=True, hide_index=True)
+        st.dataframe(
+            grade4_df.style.apply(highlight_duplicate_names, axis=None),
+            use_container_width=True,
+            hide_index=True,
+        )
