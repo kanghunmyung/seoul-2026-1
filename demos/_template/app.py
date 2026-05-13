@@ -40,7 +40,6 @@ def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 
 required_columns = ["학년", "반", "번호", "이름", "성별", "수학성적", "국어성적"]
-TARGET_CLASS_OPTIONS = list(range(1, 11))
 
 
 # ──────────────────────────────────────────────────────────────
@@ -133,7 +132,7 @@ st.dataframe(class_df, use_container_width=True, hide_index=True)
 
 
 # ──────────────────────────────────────────────────────────────
-# 기능 3. 반별 성별 분리 + 총합순 정렬 + 4학년 반 배정
+# 기능 3. 반별 성별 분리 + 총합순 정렬
 # ──────────────────────────────────────────────────────────────
 st.subheader("③ 분반 결과")
 
@@ -141,9 +140,6 @@ for class_num in sorted(df["반"].dropna().unique()):
     st.markdown(f"### 3학년 {int(class_num)}반")
 
     class_data = df[df["반"] == class_num].copy()
-
-    if f"assignment_count_{int(class_num)}" not in st.session_state:
-        st.session_state[f"assignment_count_{int(class_num)}"] = 1
 
     boys_df = (
         class_data[class_data["성별"] == "남"]
@@ -157,30 +153,20 @@ for class_num in sorted(df["반"].dropna().unique()):
         .reset_index(drop=True)
     )
 
-    class_result_df = pd.concat([boys_df, girls_df], ignore_index=True)
-    class_result_df = class_result_df[["번호", "이름", "성별", "수학성적", "국어성적", "총합"]].copy()
+    col_left, col_right = st.columns(2)
 
-    assignment_count = st.session_state[f"assignment_count_{int(class_num)}"]
+    with col_left:
+        st.write("**남학생 분반 순서**")
+        st.dataframe(
+            boys_df[["번호", "이름", "성별", "수학성적", "국어성적", "총합"]],
+            use_container_width=True,
+            hide_index=True,
+        )
 
-    for assign_idx in range(assignment_count):
-        column_name = "4학년 반" if assign_idx == 0 else f"4학년 반 {assign_idx + 1}"
-        values = []
-        for row_idx in range(len(class_result_df)):
-            key = f"grade4_class_{int(class_num)}_{assign_idx}_{row_idx}"
-            if key not in st.session_state:
-                st.session_state[key] = TARGET_CLASS_OPTIONS[(row_idx + assign_idx) % len(TARGET_CLASS_OPTIONS)]
-            values.append(
-                st.selectbox(
-                    f"3학년 {int(class_num)}반 / {class_result_df.loc[row_idx, '이름']} / {column_name}",
-                    TARGET_CLASS_OPTIONS,
-                    key=key,
-                    label_visibility="collapsed",
-                )
-            )
-        class_result_df[column_name] = values
-
-    st.dataframe(class_result_df, use_container_width=True, hide_index=True)
-
-    if st.button(f"3학년 {int(class_num)}반에 4학년 반 드롭박스 추가", key=f"add_assignment_{int(class_num)}"):
-        st.session_state[f"assignment_count_{int(class_num)}"] += 1
-        st.rerun()
+    with col_right:
+        st.write("**여학생 분반 순서**")
+        st.dataframe(
+            girls_df[["번호", "이름", "성별", "수학성적", "국어성적", "총합"]],
+            use_container_width=True,
+            hide_index=True,
+        )
