@@ -40,6 +40,7 @@ def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 
 required_columns = ["학년", "반", "번호", "이름", "성별", "수학성적", "국어성적"]
+assign_options = list(range(1, 11))
 
 
 # ──────────────────────────────────────────────────────────────
@@ -94,7 +95,7 @@ for uploaded_file in uploaded_files:
     file_summaries.append({"파일명": uploaded_file.name, "학생수": len(temp_df)})
 
 if not frames:
-    st.warning("업로드된 파일에서 3학년 데이터를 찾지 못했습니다.")
+    st.warning("업로드된 파일���서 3학년 데이터를 찾지 못했습니다.")
     st.stop()
 
 df = pd.concat(frames, ignore_index=True)
@@ -132,7 +133,7 @@ st.dataframe(class_df, use_container_width=True, hide_index=True)
 
 
 # ──────────────────────────────────────────────────────────────
-# 기능 3. 반별 성별 분리 + 총합순 정렬
+# 기능 3. 반별 성별 분리 + 총합순 정렬 + 4학년 반 선택
 # ──────────────────────────────────────────────────────────────
 st.subheader("③ 분반 결과")
 
@@ -157,16 +158,36 @@ for class_num in sorted(df["반"].dropna().unique()):
 
     with col_left:
         st.write("**남학생 분반 순서**")
-        st.dataframe(
-            boys_df[["번호", "이름", "성별", "수학성적", "국어성적", "총합"]],
-            use_container_width=True,
-            hide_index=True,
-        )
+        boys_display_df = boys_df[["번호", "이름", "성별", "수학성적", "국어성적", "총합"]].copy()
+        boys_assignments = []
+        for idx in range(len(boys_display_df)):
+            key = f"boys_assign_{int(class_num)}_{idx}"
+            default_value = assign_options[idx % len(assign_options)]
+            current_value = st.session_state.get(key, default_value)
+            selected_value = st.selectbox(
+                f"3학년 {int(class_num)}반 남학생 {boys_display_df.loc[idx, '이름']} 4학년 반",
+                assign_options,
+                index=assign_options.index(current_value),
+                key=key,
+            )
+            boys_assignments.append(selected_value)
+        boys_display_df["4학년 반"] = boys_assignments
+        st.dataframe(boys_display_df, use_container_width=True, hide_index=True)
 
     with col_right:
         st.write("**여학생 분반 순서**")
-        st.dataframe(
-            girls_df[["번호", "이름", "성별", "수학성적", "국어성적", "총합"]],
-            use_container_width=True,
-            hide_index=True,
-        )
+        girls_display_df = girls_df[["번호", "이름", "성별", "수학성적", "국어성적", "총합"]].copy()
+        girls_assignments = []
+        for idx in range(len(girls_display_df)):
+            key = f"girls_assign_{int(class_num)}_{idx}"
+            default_value = assign_options[idx % len(assign_options)]
+            current_value = st.session_state.get(key, default_value)
+            selected_value = st.selectbox(
+                f"3학년 {int(class_num)}반 여학생 {girls_display_df.loc[idx, '이름']} 4학년 반",
+                assign_options,
+                index=assign_options.index(current_value),
+                key=key,
+            )
+            girls_assignments.append(selected_value)
+        girls_display_df["4학년 반"] = girls_assignments
+        st.dataframe(girls_display_df, use_container_width=True, hide_index=True)
