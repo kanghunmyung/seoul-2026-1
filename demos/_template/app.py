@@ -159,7 +159,7 @@ for class_num in sorted(df["반"].dropna().unique()):
         .reset_index(drop=True)
     )
     boys_df = boys_df[["번호", "이름", "성별", "수학성적", "국어성적", "총합"]].copy()
-    boys_df["4학년 반"] = boys_df["반"].astype(int).astype(str) + "-" + str(boys_target_class)
+    boys_df["4학년 반"] = f"{int(class_num)}-{boys_target_class}"
 
     girls_df = (
         class_data[class_data["성별"] == "여"]
@@ -167,7 +167,7 @@ for class_num in sorted(df["반"].dropna().unique()):
         .reset_index(drop=True)
     )
     girls_df = girls_df[["번호", "이름", "성별", "수학성적", "국어성적", "총합"]].copy()
-    girls_df["4학년 반"] = girls_df["반"].astype(int).astype(str) + "-" + str(girls_target_class)
+    girls_df["4학년 반"] = f"{int(class_num)}-{girls_target_class}"
 
     col_left, col_right = st.columns(2)
 
