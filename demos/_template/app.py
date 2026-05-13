@@ -39,8 +39,14 @@ def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def rotating_class_label(base_class: int, selected_offset: int, row_index: int) -> str:
+    target_class = ((base_class + selected_offset + row_index - 1) % 10) + 1
+    return f"{target_class}반"
+
+
 required_columns = ["학년", "반", "번호", "이름", "성별", "수학성적", "국어성적"]
 assign_options = list(range(1, 11))
+all_class_options = list(range(1, 11))
 
 
 # ──────────────────────────────────────────────────────────────
@@ -133,25 +139,27 @@ st.dataframe(class_df, use_container_width=True, hide_index=True)
 
 
 # ──────────────────────────────────────────────────────────────
-# 기능 3. 반별 성별 분리 + 총합순 정렬 + 일괄 4학년 반 배정
+# 기능 3. 반별 성별 분리 + 총합순 정렬 + 순환 4학년 반 배정
 # ──────────────────────────────────────────────────────────────
 st.subheader("③ 분반 결과")
+
+st.markdown("#### 3학년 반별 시작 번호 설정")
+selector_columns = st.columns(5)
+class_start_map = {}
+
+for idx, class_no in enumerate(all_class_options):
+    with selector_columns[idx % 5]:
+        class_start_map[class_no] = st.selectbox(
+            f"3학년 {class_no}반 시작 번호",
+            assign_options,
+            key=f"start_class_{class_no}",
+        )
 
 for class_num in sorted(df["반"].dropna().unique()):
     st.markdown(f"### 3학년 {int(class_num)}반")
 
     class_data = df[df["반"] == class_num].copy()
-
-    boys_target_class = st.selectbox(
-        f"3학년 {int(class_num)}반 남학생 4학년 반 선택",
-        assign_options,
-        key=f"boys_target_class_{int(class_num)}",
-    )
-    girls_target_class = st.selectbox(
-        f"3학년 {int(class_num)}반 여학생 4학년 반 선택",
-        assign_options,
-        key=f"girls_target_class_{int(class_num)}",
-    )
+    selected_offset = class_start_map[int(class_num)]
 
     boys_df = (
         class_data[class_data["성별"] == "남"]
@@ -159,7 +167,10 @@ for class_num in sorted(df["반"].dropna().unique()):
         .reset_index(drop=True)
     )
     boys_df = boys_df[["번호", "이름", "성별", "수학성적", "국어성적", "총합"]].copy()
-    boys_df["4학년 반"] = f"{int(class_num)}-{boys_target_class}"
+    boys_df["4학년 반"] = [
+        rotating_class_label(int(class_num), selected_offset, idx)
+        for idx in range(len(boys_df))
+    ]
 
     girls_df = (
         class_data[class_data["성별"] == "여"]
@@ -167,7 +178,10 @@ for class_num in sorted(df["반"].dropna().unique()):
         .reset_index(drop=True)
     )
     girls_df = girls_df[["번호", "이름", "성별", "수학성적", "국어성적", "총합"]].copy()
-    girls_df["4학년 반"] = f"{int(class_num)}-{girls_target_class}"
+    girls_df["4학년 반"] = [
+        rotating_class_label(int(class_num), selected_offset, idx)
+        for idx in range(len(girls_df))
+    ]
 
     col_left, col_right = st.columns(2)
 
