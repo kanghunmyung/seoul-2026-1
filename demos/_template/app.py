@@ -1,7 +1,7 @@
 """
 분반 프로그램 — Streamlit 시작 앱
 
-학생 분반 데이터를 업로드하면 학년/반별로 정리해서 보여주는 프로그램입니다.
+3학년 각 반 CSV 파일을 여러 개 업로드하면 하나로 모아 반별로 정리해서 보여주는 프로그램입니다.
 """
 
 import io
@@ -16,7 +16,7 @@ st.set_page_config(
 )
 
 st.title("📊 분반 프로그램")
-st.caption("학년/반별 학생 데이터를 업로드하면 반별로 정리해서 보여줍니다.")
+st.caption("3학년 각 반 CSV 파일을 여러 개 업로드하면 전체 데이터를 모아서 반별로 보여줍니다.")
 
 
 # ──────────────────────────────────────────────────────────────
@@ -32,6 +32,7 @@ def read_csv_any(uploaded_file) -> pd.DataFrame:
     return pd.read_csv(io.BytesIO(raw), encoding="utf-8", errors="replace")
 
 
+
 def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     df.columns = [str(col).strip() for col in df.columns]
@@ -42,11 +43,11 @@ required_columns = ["학년", "반", "번호", "이름", "성별", "수학성적
 
 
 # ──────────────────────────────────────────────────────────────
-# 사이드바: 파일 업로더
+# 사이드바: 여러 파일 업로더
 # ──────────────────────────────────────────────────────────────
 with st.sidebar:
     st.header("📂 데이터 업로드")
-    uploaded = st.file_uploader("CSV 파일", type=["csv"])
+    uploaded_files = st.file_uploader("3학년 각 반 CSV 파일", type=["csv"], accept_multiple_files=True)
     st.markdown(
         """
         **필수 컬럼**
@@ -58,67 +59,82 @@ with st.sidebar:
         - `수학성적`
         - `국어성적`
 
-        샘플 파일이 필요하면 `sample_data.csv`를 사용하세요.
+        **사용 방법**
+        - `3학년 1반 데이터`, `3학년 2반 데이터`처럼 반별 CSV를 따로 업로드하세요.
+        - 여러 파일을 한 번에 선택하면 자동으로 하나로 합쳐집니다.
+        - 샘플 파일은 `sample_data_1반.csv` ~ `sample_data_10반.csv`를 사용하세요.
         """
     )
 
-if uploaded is None:
-    st.info("👈 왼쪽 사이드바에서 CSV 파일을 업로드하세요.")
+if not uploaded_files:
+    st.info("👈 왼쪽 사이드바에서 3학년 각 반 CSV 파일을 업로드하세요.")
     st.stop()
 
-df = normalize_columns(read_csv_any(uploaded))
-missing_columns = [col for col in required_columns if col not in df.columns]
+frames = []
+file_summaries = []
 
-if missing_columns:
-    st.error(
-        "CSV에 필요한 컬럼이 없습니다: " + ", ".join(missing_columns)
-    )
+for uploaded_file in uploaded_files:
+    temp_df = normalize_columns(read_csv_any(uploaded_file))
+    missing_columns = [col for col in required_columns if col not in temp_df.columns]
+
+    if missing_columns:
+        st.error(
+            f"{uploaded_file.name} 파일에 필요한 컬럼이 없습니다: " + ", ".join(missing_columns)
+        )
+        st.stop()
+
+    for col in ["학년", "반", "번호", "수학성적", "국어성적"]:
+        temp_df[col] = pd.to_numeric(temp_df[col], errors="coerce")
+
+    temp_df = temp_df[temp_df["학년"] == 3].copy()
+    frames.append(temp_df)
+    file_summaries.append({"파일명": uploaded_file.name, "학생수": len(temp_df)})
+
+if not frames:
+    st.warning("업로드된 파일에서 3학년 데이터를 찾지 못했습니다.")
     st.stop()
 
-for col in ["학년", "반", "번호", "수학성적", "국어성적"]:
-    df[col] = pd.to_numeric(df[col], errors="coerce")
-
-df = df.sort_values(["학년", "반", "번호"]).reset_index(drop=True)
+df = pd.concat(frames, ignore_index=True)
+df = df.sort_values(["반", "번호"]).reset_index(drop=True)
 
 
 # ──────────────────────────────────────────────────────────────
-# 기능 1. 전체 데이터 확인 + 요약
+# 기능 1. 업로드 파일 확인 + 전체 요약
 # ──────────────────────────────────────────────────────────────
-st.subheader("① 전체 데이터 확인")
+st.subheader("① 업로드 파일 및 전체 데이터 확인")
+
+file_summary_df = pd.DataFrame(file_summaries)
+st.dataframe(file_summary_df, use_container_width=True, hide_index=True)
 
 col1, col2, col3 = st.columns(3)
 col1.metric("전체 학생 수", f"{len(df)}명")
-col2.metric("학년 수", int(df["학년"].nunique()))
-col3.metric("반 수", int(df[["학년", "반"]].drop_duplicates().shape[0]))
+col2.metric("업로드한 반 수", int(df["반"].nunique()))
+col3.metric("업로드 파일 수", len(uploaded_files))
 
 st.dataframe(df, use_container_width=True, hide_index=True)
 
 
 # ──────────────────────────────────────────────────────────────
-# 기능 2. 학년/반 선택해서 보기
+# 기능 2. 반 선택해서 보기
 # ──────────────────────────────────────────────────────────────
-st.subheader("② 학년/반별 학생 보기")
+st.subheader("② 반별 학생 보기")
 
-grade_options = sorted(df["학년"].dropna().unique())
-selected_grade = st.selectbox("학년 선택", grade_options)
-
-class_options = sorted(df.loc[df["학년"] == selected_grade, "반"].dropna().unique())
+class_options = sorted(df["반"].dropna().unique())
 selected_class = st.selectbox("반 선택", class_options)
 
-class_df = df[(df["학년"] == selected_grade) & (df["반"] == selected_class)].copy()
-class_df = class_df.sort_values("번호")
+class_df = df[df["반"] == selected_class].copy().sort_values("번호")
 
-st.write(f"**{int(selected_grade)}학년 {int(selected_class)}반 학생 목록**")
+st.write(f"**3학년 {int(selected_class)}반 학생 목록**")
 st.dataframe(class_df, use_container_width=True, hide_index=True)
 
 
 # ──────────────────────────────────────────────────────────────
-# 기능 3. 반별 성적 요약
+# 기능 3. 반별 요약
 # ──────────────────────────────────────────────────────────────
-st.subheader("③ 반별 성적 요약")
+st.subheader("③ 반별 요약")
 
 summary_df = (
-    df.groupby(["학년", "반"], as_index=False)
+    df.groupby("반", as_index=False)
     .agg(
         학생수=("이름", "count"),
         남학생수=("성별", lambda x: (x.astype(str).str.strip() == "남").sum()),
@@ -126,6 +142,7 @@ summary_df = (
         수학평균=("수학성적", "mean"),
         국어평균=("국어성적", "mean"),
     )
+    .sort_values("반")
 )
 
 summary_df["수학평균"] = summary_df["수학평균"].round(1)
