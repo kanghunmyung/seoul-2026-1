@@ -39,6 +39,7 @@ def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+
 def rotating_class_label(base_class: int, selected_offset: int, row_index: int) -> str:
     target_class = ((base_class + selected_offset + row_index - 1) % 10) + 1
     return f"{target_class}반"
@@ -187,8 +188,34 @@ for class_num in sorted(df["반"].dropna().unique()):
 
     with col_left:
         st.write("**남학생 분반 순서**")
-        st.dataframe(boys_df, use_container_width=True, hide_index=True)
+        st.data_editor(
+            boys_df,
+            use_container_width=True,
+            hide_index=True,
+            disabled=["번호", "이름", "성별", "수학성적", "국어성적", "총합"],
+            column_config={
+                "4학년 반": st.column_config.SelectboxColumn(
+                    "4학년 반",
+                    options=[f"{i}반" for i in range(1, 11)],
+                    required=True,
+                )
+            },
+            key=f"boys_editor_{int(class_num)}",
+        )
 
     with col_right:
         st.write("**여학생 분반 순서**")
-        st.dataframe(girls_df, use_container_width=True, hide_index=True)
+        st.data_editor(
+            girls_df,
+            use_container_width=True,
+            hide_index=True,
+            disabled=["번호", "이름", "성별", "수학성적", "국어성적", "총합"],
+            column_config={
+                "4학년 반": st.column_config.SelectboxColumn(
+                    "4학년 반",
+                    options=[f"{i}반" for i in range(1, 11)],
+                    required=True,
+                )
+            },
+            key=f"girls_editor_{int(class_num)}",
+        )
