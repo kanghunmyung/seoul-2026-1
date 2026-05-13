@@ -86,7 +86,10 @@ for uploaded_file in uploaded_files:
     for col in ["학년", "반", "번호", "수학성적", "국어성적"]:
         temp_df[col] = pd.to_numeric(temp_df[col], errors="coerce")
 
+    temp_df["성별"] = temp_df["성별"].astype(str).str.strip()
     temp_df = temp_df[temp_df["학년"] == 3].copy()
+    temp_df["총합"] = temp_df["수학성적"] + temp_df["국어성적"]
+
     frames.append(temp_df)
     file_summaries.append({"파일명": uploaded_file.name, "학생수": len(temp_df)})
 
@@ -141,11 +144,54 @@ summary_df = (
         여학생수=("성별", lambda x: (x.astype(str).str.strip() == "여").sum()),
         수학평균=("수학성적", "mean"),
         국어평균=("국어성적", "mean"),
+        총합평균=("총합", "mean"),
     )
     .sort_values("반")
 )
 
 summary_df["수학평균"] = summary_df["수학평균"].round(1)
 summary_df["국어평균"] = summary_df["국어평균"].round(1)
+summary_df["총합평균"] = summary_df["총합평균"].round(1)
 
 st.dataframe(summary_df, use_container_width=True, hide_index=True)
+
+
+# ──────────────────────────────────────────────────────────────
+# 기능 4. 반별 성별 분리 + 총합순 정렬
+# ────────────────────────────────────────────────────��─────────
+st.subheader("④ 반별 분반 결과")
+
+for class_num in sorted(df["반"].dropna().unique()):
+    st.markdown(f"### 3학년 {int(class_num)}반")
+
+    class_data = df[df["반"] == class_num].copy()
+
+    boys_df = (
+        class_data[class_data["성별"] == "남"]
+        .sort_values(["총합", "수학성적", "국어성적", "번호"], ascending=[False, False, False, True])
+        .reset_index(drop=True)
+    )
+
+    girls_df = (
+        class_data[class_data["성별"] == "여"]
+        .sort_values(["총합", "수학성적", "국어성적", "번호"], ascending=[False, False, False, True])
+        .reset_index(drop=True)
+    )
+
+    col_left, col_right = st.columns(2)
+
+    with col_left:
+        st.write("**남학생 분반 순서**")
+        st.dataframe(
+            boys_df[["번호", "이름", "성별", "수학성적", "국어성적", "총합"]],
+            use_container_width=True,
+            hide_index=True,
+        )
+
+    with col_right:
+        st.write("**여학생 분반 순서**")
+        st.dataframe(
+            girls_df[["번호", "이름", "성별", "수학성적", "국어성적", "총합"]],
+            use_container_width=True,
+            hide_index=True,
+        )
