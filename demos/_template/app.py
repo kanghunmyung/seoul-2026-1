@@ -145,22 +145,30 @@ st.dataframe(class_df, use_container_width=True, hide_index=True)
 st.subheader("③ 분반 결과")
 
 st.markdown("#### 3학년 반별 시작 번호 설정")
-selector_columns = st.columns(5)
 class_start_map = {}
 
-for idx, class_no in enumerate(all_class_options):
-    with selector_columns[idx % 5]:
-        class_start_map[class_no] = st.selectbox(
-            f"3학년 {class_no}반 시작 번호",
+for class_no in all_class_options:
+    col_left, col_right = st.columns(2)
+    with col_left:
+        boys_start = st.selectbox(
+            f"3학년 {class_no}반 남학생 시작 번호",
             assign_options,
-            key=f"start_class_{class_no}",
+            key=f"boys_start_class_{class_no}",
         )
+    with col_right:
+        girls_start = st.selectbox(
+            f"3학년 {class_no}반 여학생 시작 번호",
+            assign_options,
+            key=f"girls_start_class_{class_no}",
+        )
+    class_start_map[class_no] = {"남": boys_start, "여": girls_start}
 
 for class_num in sorted(df["반"].dropna().unique()):
     st.markdown(f"### 3학년 {int(class_num)}반")
 
     class_data = df[df["반"] == class_num].copy()
-    selected_offset = class_start_map[int(class_num)]
+    boys_offset = class_start_map[int(class_num)]["남"]
+    girls_offset = class_start_map[int(class_num)]["여"]
 
     boys_df = (
         class_data[class_data["성별"] == "남"]
@@ -169,7 +177,7 @@ for class_num in sorted(df["반"].dropna().unique()):
     )
     boys_df = boys_df[["번호", "이름", "성별", "수학성적", "국어성적", "총합"]].copy()
     boys_df["4학년 반"] = [
-        rotating_class_label(int(class_num), selected_offset, idx)
+        rotating_class_label(int(class_num), boys_offset, idx)
         for idx in range(len(boys_df))
     ]
 
@@ -180,7 +188,7 @@ for class_num in sorted(df["반"].dropna().unique()):
     )
     girls_df = girls_df[["번호", "이름", "성별", "수학성적", "국어성적", "총합"]].copy()
     girls_df["4학년 반"] = [
-        rotating_class_label(int(class_num), selected_offset, idx)
+        rotating_class_label(int(class_num), girls_offset, idx)
         for idx in range(len(girls_df))
     ]
 
